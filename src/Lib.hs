@@ -50,10 +50,10 @@ spawnCell ((x, y, v):xs) cm = cm' where
 
 accumulateRow :: Int -> [(Int, Bool)] -> [(Int, Bool)]
 accumulateRow x [] = [(x, False)]
-accumulateRow x xbs@((x', b):tail)
-    | x == 0                          = xbs  
-    | (x == x' || x' == 0) && (not b) = (x' + x, True) : tail
-    | otherwise                       = (x, False) : xbs
+accumulateRow x xbs@((x', prevMerged):tail)
+    | x == 0                                   = xbs  
+    | (x == x' || x' == 0) && (not prevMerged) = (x' + x, x == x') : tail
+    | otherwise                                = (x, False) : xbs
 
 merge :: Int -> CellMatrix -> CellMatrix
 merge side cm = foldr f [] cm where
@@ -100,12 +100,12 @@ execute cmd (Game side cm spwns@(_:xs) sc _) =
             Downward  -> orientUp . mergeMatrix . orientDown $ cm
             Rightward -> orientRight . orientRight . mergeMatrix $ cm
 
-        mergeMatrix     = merge side
-        sumScore xs     = sum $ foldr (\x acc -> (sum x) : acc) [] xs
-        gameOver cm     = not $ mergeableColumn cm || mergeableRow cm
-        mergeableColumn = foldr (\xs acc -> (mergeableLane xs) || acc) False
-        mergeableRow    = mergeableColumn . transpose
-        mergeableLane   = 
+        mergeMatrix        = merge side
+        sumScore xs        = sum $ foldr (\x acc -> (sum x) : acc) [] xs
+        gameOver cm        = not $ anyColumnMergeable cm || anyRowMergeable cm
+        anyRowMergeable    = foldr (\xs acc -> (anyCellsMergeable xs) || acc) False
+        anyColumnMergeable = anyRowMergeable . transpose
+        anyCellsMergeable  = 
             snd . foldr (\x (prev, acc) -> (x, acc || ((prev == x) || x == 0))) (-1, False)
 
 gameLoop :: Game -> IO ()
@@ -113,7 +113,7 @@ gameLoop g@(Game side _ _ score True) = do
     putStrLn "Game Over!"
     putStrLn $ "Your final score is: " ++ show score
     putStrLn "Press 'r' to restart the game or 'q' to quit."
-    putStrLn ">"
+    putStr ">"
     cmd <- getLine
     case cmd of
         "r" -> gameLoop $ initGame side
@@ -125,7 +125,7 @@ gameLoop g@(Game side _ _ score True) = do
 gameLoop g@(Game side cm _ score _) = do
     putStrLn $ "Your score is: " ++ show score
     mapM_ print cm
-    putStrLn ">"
+    putStr ">"
     cmd <- getLine
     case cmd of
         "w" -> gameLoop $ execute Upward g
