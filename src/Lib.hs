@@ -96,16 +96,16 @@ execute cmd (Game side cm spwns@(_:xs) sc _) =
         nextCm = if cm /= cm' then spawnCell spwns cm' else cm'
         cm' = case cmd of
             Leftward  -> orientLeft . mergeMatrix . orientLeft $ cm
-            Upward    -> orientDown .mergeMatrix . orientUp $ cm
+            Upward    -> orientDown . mergeMatrix . orientUp $ cm
             Downward  -> orientUp . mergeMatrix . orientDown $ cm
             Rightward -> orientRight . orientRight . mergeMatrix $ cm
 
-        mergeMatrix        = merge side
-        sumScore xs        = sum $ foldr (\x acc -> (sum x) : acc) [] xs
-        gameOver cm        = not $ anyColumnMergeable cm || anyRowMergeable cm
-        anyRowMergeable    = foldr (\xs acc -> (anyCellsMergeable xs) || acc) False
-        anyColumnMergeable = anyRowMergeable . transpose
-        anyCellsMergeable  = 
+        mergeMatrix         = merge side
+        sumScore xs         = sum $ foldr (\x acc -> (sum x) : acc) [] xs
+        gameOver cm         = not $ anyColumnsMergeable cm || anyRowsMergeable cm
+        anyRowsMergeable    = foldr (\xs acc -> (anyCellsMergeable xs) || acc) False
+        anyColumnsMergeable = anyRowsMergeable . transpose
+        anyCellsMergeable   = 
             snd . foldr (\x (prev, acc) -> (x, acc || ((prev == x) || x == 0))) (-1, False)
 
 gameLoop :: Game -> IO ()
