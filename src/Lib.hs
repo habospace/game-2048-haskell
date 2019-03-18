@@ -5,7 +5,7 @@ type Column     = Int
 type Row        = Int
 type CellValue  = Int
 type Spawning   = (Column, Row, CellValue)
-type CellMatrix =  [[Int]]
+type CellMatrix = [[Int]]
 
 data Command = 
     Upward 
@@ -25,7 +25,7 @@ data Game = Game {
 initGame :: Int -> Game
 initGame side = Game side cm spwns 0 False where 
     cm    = spawn . spawn . spawn $ replicate side $ replicate side 0
-    spwns = zipWith3 (\x y v -> (x, y, v)) xs ys vs
+    spwns = zipWith3 (\col row cellVal -> (col, row, cellVal)) xs ys vs
     xs    = (mod <$> (randoms (mkStdGen 0))) <*> (pure side)
     ys    = (mod <$> (randoms (mkStdGen 1))) <*> (pure side)
     vs    = (\x -> x * 2 + 2) <$> ((mod <$> (randoms (mkStdGen 2))) <*> (pure 2))
@@ -34,26 +34,26 @@ initGame side = Game side cm spwns 0 False where
 insert :: [a] -> Int -> a -> [a]
 insert [] _ _      = [] 
 insert (x:xs) 0 x' = x' : xs
-insert (x:xs) n x' = x: insert xs (n-1) x'
+insert (x:xs) n x' = x : insert xs (n-1) x'
 
 spawnCell :: [Spawning] -> CellMatrix -> CellMatrix
 spawnCell [] cm = cm
-spawnCell ((x, y, v):xs) cm = cm' where
+spawnCell ((x, y, v):spawnTail) cm = cm' where
     cm' = case hasEmptyCell cm of 
         False -> cm 
         True  -> case empty cm x y of
             True  -> insert' cm x y v
-            False -> spawnCell xs cm
+            False -> spawnCell spawnTail cm
     empty cm x y      = ((cm !! y) !! x) == 0
     insert' cm x y v  = insert cm y $ insert (cm !! y) x v
     hasEmptyCell cm   = foldr (\xs acc -> (elem 0 xs) || acc) False cm
 
 accumulateRow :: Int -> [(Int, Bool)] -> [(Int, Bool)]
 accumulateRow x [] = [(x, False)]
-accumulateRow x xbs@((x', prevMerged):tail)
-    | x == 0                                   = xbs  
+accumulateRow x xpms@((x', prevMerged):tail)
+    | x == 0                                   = xpms  
     | (x == x' || x' == 0) && (not prevMerged) = (x' + x, x == x') : tail
-    | otherwise                                = (x, False) : xbs
+    | otherwise                                = (x, False) : xpms
 
 merge :: Int -> CellMatrix -> CellMatrix
 merge side cm = foldr f [] cm where
@@ -64,10 +64,10 @@ merge side cm = foldr f [] cm where
 transpose :: CellMatrix -> CellMatrix
 transpose []     = []
 transpose ([]:_) = []
-transpose cm  = transposeColumn cm : (transpose $ removeColumn <$> cm) where
+transpose cm     = transposeColumn cm : (transpose $ removeColumn <$> cm) where
     removeColumn []       = []
     removeColumn (_:xs)   = xs  
-    transposeColumn cm'   = foldr accumColumn [] cm' 
+    transposeColumn cm    = foldr accumColumn [] cm 
     accumColumn [] _      = []
     accumColumn (x:_) acc = x:acc
 
@@ -91,8 +91,8 @@ orientRight cm = id cm
 
 execute :: Command -> Game -> Game
 execute _ g@(Game _ _ _ _ True) = g
-execute cmd (Game side cm spwns@(_:xs) sc _) =  
-    Game side nextCm xs (sumScore cm') (gameOver nextCm) where
+execute cmd (Game side cm spwns@(_:spawnTail) sc _) =  
+    Game side nextCm spawnTail (sumScore cm') (gameOver nextCm) where
         nextCm = if cm /= cm' then spawnCell spwns cm' else cm'
         cm' = case cmd of
             Leftward  -> orientLeft . mergeMatrix . orientLeft $ cm
