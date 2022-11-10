@@ -1,4 +1,4 @@
-# Game2048Haskell
+# game-2048-haskell
 
 A terminal version replica of the game 2048 (see: http://2048.io/) implemented in Haskell.
 The repository has the following structure:
